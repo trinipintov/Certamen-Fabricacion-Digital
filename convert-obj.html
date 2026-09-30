@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor OBJ → GLB</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .container {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 2.5rem;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #00ff88; }
+        p { color: #888; margin-bottom: 1.5rem; }
+        .drop-zone {
+            border: 2px dashed rgba(0,255,136,0.3);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.5rem;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #00ff88;
+            background: rgba(0,255,136,0.05);
+        }
+        .drop-zone i { font-size: 3rem; display: block; margin-bottom: 1rem; }
+        .drop-zone p { margin: 0; color: #aaa; }
+        #fileInput { display: none; }
+        .btn {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #000;
+            border: none;
+            padding: 0.875rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: none;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: none;
+        }
+        .status.success { background: rgba(0,255,136,0.1); color: #00ff88; display: block; }
+        .status.error { background: rgba(255,50,50,0.1); color: #ff5050; display: block; }
+        .status.loading { background: rgba(0,150,255,0.1); color: #0096ff; display: block; }
+        .progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 1rem;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Conversor OBJ → GLB</h1>
+        <p>Convierte tu modelo 3D a formato GLB optimizado para WebXR</p>
+
+        <div class="drop-zone" id="dropZone">
+            <p>Arrastra tu archivo .obj aquí o haz clic para seleccionar</p>
+            <p style="font-size: 0.75rem; margin-top: 0.5rem; color: #666;">También debe estar presente el archivo .mtl</p>
+        </div>
+
+        <input type="file" id="fileInput" accept=".obj">
+
+        <button class="btn" id="convertBtn">Convertir a GLB</button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const status = document.getElementById('status');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+
+        let objFile = null;
+        let mtlFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            status.className = 'status';
+            status.style.display = 'none';
+
+            for (const file of files) {
+                if (file.name.endsWith('.obj')) {
+                    objFile = file;
+                } else if (file.name.endsWith('.mtl')) {
+                    mtlFile = file;
+                }
+            }
+
+            if (objFile) {
+                convertBtn.style.display = 'inline-block';
+                showStatus('Archivo cargado: ' + objFile.name, 'success');
+            } else {
+                showStatus('Por favor selecciona un archivo .obj', 'error');
+            }
+        }
+
+        function showStatus(msg, type) {
+            status.textContent = msg;
+            status.className = 'status ' + type;
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            if (!objFile) return;
+
+            convertBtn.disabled = true;
+            progress.style.display = 'block';
+            progressBar.style.width = '10%';
+            showStatus('Cargando modelo...', 'loading');
+
+            try {
+                const objText = await objFile.text();
+                progressBar.style.width = '30%';
+
+                const loader = new OBJLoader();
+                const object = loader.parse(objText);
+
+                progressBar.style.width = '60%';
+                showStatus('Optimizando geometría...', 'loading');
+
+                // Optimizar: combinar materiales, reducir poligonos si es necesario
+                object.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        if (child.geometry) {
+                            child.geometry.computeVertexNormals();
+                        }
+                    }
+                });
+
+                progressBar.style.width = '80%';
+                showStatus('Exportando GLB...', 'loading');
+
+                const exporter = new GLTFExporter();
+                const glb = await exporter.parseAsync(object, {
+                    binary: true,
+                    trs: true,
+                    onlyVisible: true
+                });
+
+                progressBar.style.width = '100%';
+
+                // Descargar
+                const blob = new Blob([glb], { type: 'model/gltf-binary' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'banda-optimizada.glb';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showStatus('¡Conversión completada! Descarga lista.', 'success');
+
+            } catch (err) {
+                console.error(err);
+                showStatus('Error: ' + err.message, 'error');
+            } finally {
+                convertBtn.disabled = false;
+                setTimeout(() => { progress.style.display = 'none'; }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supermercado RV — POV Anteojos Inteligentes con IA</title>
+    <meta name="description" content="Experiencia de Realidad Virtual en Three.js con POV de anteojos inteligentes futuristas e Inteligencia Artificial para análisis de calidad de frutas y verduras en tiempo real.">
+    <link rel="stylesheet" href="css/style.css?v=8">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('[SUPERMARKET ERROR]', e.error || e.message);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('[PROMISE REJECTION]', e.reason);
+        });
+    </script>
+</head>
+<body>
+    <canvas id="scene"></canvas>
+
+    <div id="hud">
+        <!-- Retícula central -->
+        <div id="reticle">
+            <div class="reticle-ring"></div>
+            <div class="reticle-dot"></div>
+            <div class="reticle-label" id="reticleLabel">OBJETIVO DETECTADO</div>
+        </div>
+
+        <!-- Indicador de escaneo -->
+        <div id="scanIndicator" class="hidden">
+            <div class="scan-text">ANALIZANDO FIRMA BIOQUÍMICA...</div>
+            <div class="scan-bar">
+                <div class="scan-progress"></div>
+            </div>
+        </div>
+
+        <!-- Instrucciones en pantalla -->
+        <div id="instructions">
+            <h3>👓 ANTEOJOS INTELIGENTES POV</h3>
+            <p>🖱️ <strong>Arrastrar mouse:</strong> Mirar a tu alrededor en 360°</p>
+            <p>⌨️ <strong>Teclas W A S D / Flechas:</strong> Caminar por los pasillos</p>
+            <p>🎯 <strong>Mantener la vista:</strong> Escanear cualquier fruta o verdura</p>
+            <p>🔊 <strong>Voz IA en vivo:</strong> Análisis nutricional y frescura automático</p>
+            <p style="margin-top: 10px; font-size: 0.72rem; color: #94a3b8;">(Haz clic en cualquier parte para interactuar)</p>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js?v=8"></script>
+</body>
+</html>
